@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicSense App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center pt-10">
+
+    <!-- Mobile Screen Container -->
+    <div class="bg-white w-full max-w-sm h-[80vh] rounded-3xl shadow-2xl border-4 border-gray-800 overflow-hidden relative flex flex-col">
+        
+        <!-- Header -->
+        <div class="bg-green-600 p-4 text-white text-center font-bold text-lg shadow-md">
+            WatchWaste ♻️
+        </div>
+
+        <!-- Camera Area -->
+        <div class="flex-grow flex flex-col items-center justify-center p-6 space-y-6">
+            <div id="preview-container" class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-400">
+                <i class="fas fa-camera text-4xl text-gray-400"></i>
+                <img id="image-preview" class="hidden w-full h-full object-cover rounded-lg" />
+            </div>
+
+            <p class="text-gray-500 text-sm text-center">Take a photo of the waste to report it.</p>
+            
+            <input type="file" id="fileInput" accept="image/*" capture="environment" class="hidden" onchange="previewImage(event)">
+            
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full font-semibold shadow transition w-full">
+                <i class="fas fa-camera mr-2"></i> Open Camera
+            </button>
+
+            <button onclick="submitReport()" id="reportBtn" class="hidden bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-full font-bold shadow-lg w-full animate-bounce">
+                Verify & Submit
+            </button>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader" class="hidden absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center z-50">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-green-600"></div>
+            <p class="mt-4 text-green-700 font-bold">AI Analyzing...</p>
+        </div>
+
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const src = URL.createObjectURL(file);
+                document.getElementById('image-preview').src = src;
+                document.getElementById('image-preview').classList.remove('hidden');
+                document.querySelector('.fa-camera').classList.add('hidden');
+                document.getElementById('reportBtn').classList.remove('hidden');
+            }
+        }
+
+        async function submitReport() {
+            if (!selectedFile) return;
+
+            // Show Loader
+            document.getElementById('loader').classList.remove('hidden');
+
+            // Get Location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    const formData = new FormData();
+                    formData.append("lat", lat);
+                    formData.append("lon", lon);
+                    formData.append("file", selectedFile);
+
+                    try {
+                        // Change URL if testing on mobile using ngrok, otherwise localhost
+                        const response = await axios.post("http://localhost:8000/report", formData);
+                        
+                        document.getElementById('loader').classList.add('hidden');
+                        
+                        if (response.data.status === "success") {
+                            alert("✅ Success: " + response.data.message);
+                            location.reload();
+                        } else {
+                            alert("❌ Rejected: " + response.data.message);
+                        }
+                    } catch (error) {
+                        alert("Error connecting to server");
+                        document.getElementById('loader').classList.add('hidden');
+                    }
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+    </script>
+</body>
+</html>

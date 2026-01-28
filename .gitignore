@@ -1,0 +1,26 @@
+# Security: Hide API Keys
+.env
+
+# Python: Hide cache and virtual envs
+__pycache__/
+*.pyc
+venv/
+env/
+.pytest_cache/
+
+# Database: Don't upload local data
+*.db
+*.sqlite3
+backend/watchwaste.db
+
+# User Content: Don't upload test images
+backend/uploads/
+frontend/uploads/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/

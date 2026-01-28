@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WatchWaste Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-indigo-900 text-white shadow-lg p-4 flex justify-between items-center z-20">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-satellite-dish text-green-400 text-xl"></i>
+            <h1 class="text-xl font-bold tracking-wider">WatchWaste <span class="text-green-400">Command Center</span></h1>
+        </div>
+        <div class="flex space-x-6 text-sm font-semibold">
+            <div class="flex items-center"><div class="w-3 h-3 bg-red-600 rounded-full mr-2 animate-pulse"></div> Critical Hotspots</div>
+            <div class="flex items-center"><div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div> Resolved</div>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div id="map" class="flex-grow z-10 border-t-4 border-indigo-500"></div>
+
+    <script>
+        // 1. Initialize Map (Centered on New Delhi - Change coords if you are elsewhere)
+        // You can find your coords by right-clicking Google Maps
+        const map = L.map('map').setView([28.6139, 77.2090], 11); 
+
+        // 2. Add Dark Mode Map Tiles (Looks more "Tech/Hackathon")
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors & CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // 3. Fetch Data from Backend
+        async function loadHotspots() {
+            try {
+                const response = await fetch("http://localhost:8000/get-hotspots");
+                const reports = await response.json();
+
+                console.log("Reports loaded:", reports); // Check console if map is empty
+
+                reports.forEach(report => {
+                    // Create a custom Red Pulse Icon
+                    const redIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: "<div style='background-color:#ef4444; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px #ef4444; border: 2px solid white;'></div>",
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    });
+
+                    // Add Marker
+                    const marker = L.marker([report.lat, report.lon], { icon: redIcon }).addTo(map);
+
+                    // Create Popup Content
+                    const popupContent = `
+                        <div class="w-64 p-1 font-sans">
+                            <div class="relative">
+                                <span class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow">
+                                    CONFIDENCE: ${(parseFloat(report.confidence || 0) * 100).toFixed(0)}%
+                                </span>
+                                <img src="${report.image}" class="w-full h-32 object-cover rounded-lg border border-gray-300">
+                            </div>
+                            
+                            <h3 class="font-bold text-gray-800 mt-2 text-sm uppercase flex items-center">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-2"></i> Verified Dump
+                            </h3>
+                            
+                            <div class="bg-gray-100 p-2 rounded mt-2 text-xs text-gray-600 border-l-4 border-indigo-500">
+                                <strong>AI Analysis:</strong><br>
+                                "${report.analysis || 'No details provided'}"
+                            </div>
+
+                            <div class="flex justify-between mt-3">
+                                <span class="text-xs text-gray-400">${new Date(report.time).toLocaleTimeString()}</span>
+                                <button class="bg-indigo-600 text-white text-xs px-3 py-1 rounded hover:bg-indigo-700 transition">
+                                    Dispatch Truck
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+                });
+
+                // Auto-center map if we have points
+                if (reports.length > 0) {
+                    const group = new L.featureGroup(reports.map(r => L.marker([r.lat, r.lon])));
+                    map.fitBounds(group.getBounds().pad(0.2));
+                }
+
+            } catch (error) {
+                console.error("Error loading hotspots:", error);
+                alert("Could not load map data. Is Backend running?");
+            }
+        }
+
+        loadHotspots();
+    </script>
+</body>
+</html>
